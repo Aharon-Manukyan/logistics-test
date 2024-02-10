@@ -1,7 +1,7 @@
 <template>
   <div class="flex">
     <left-side-bar></left-side-bar>
-    <div class="w-full bg-[#fbfcfd] px-[25px]">
+    <div class="bg-[#fbfcfd] px-[25px] widthCustom">
       <div class="my-[25px] flex flex-col gap-[25px]">
         <h1>Проведение ТО и мелкий ремонт</h1>
         <div class="flex justify-between text-center">
@@ -26,6 +26,9 @@ import settings from "@/assets/settings.svg";
 </script>
 
 <style lang="scss">
+.widthCustom {
+  width: calc(100% - 229px);
+}
 h1 {
   font-family: MyriadPro;
   font-size: 30px !important;
