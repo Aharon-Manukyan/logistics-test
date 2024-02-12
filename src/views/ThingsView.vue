@@ -1,7 +1,10 @@
 <template>
   <div class="things">
     <div class="add">
-      <button class="flex flex-row justify-center text-center align-middle gap-[7px]">
+      <button
+        class="flex flex-row justify-center text-center align-middle gap-[7px]"
+        @click="addColumn"
+      >
         <img :src="plus" alt="plus" class="my-[2px]" />
         <span>Добавить строку</span>
       </button>
@@ -9,80 +12,158 @@
     <section class="things__table flex flex-col gap-[25px]">
       <div class="things__table--save">
         <button>Сохранить изменения</button>
-        <div ref="containerSetting" @click="handleClickOutside" class="cursor-pointer">
-          <img :src="settings" alt="settings" :onclick="toggleDropdown" />
-        </div>
-        <div v-if="isDropdownOpen" class="settings-list" ref="dropdown">
-          <ul v-if="!columnsSetting">
-            <li @click="() => selectedOption('view')">
-              <span> Отображение столбцов </span>
-              <img :src="arrowRight" alt="arrowRight" />
-            </li>
-            <li @click="() => selectedOption('sort')">
-              <span> Порядок столбцов </span>
-              <img :src="arrowRight" alt="arrowRight" />
-            </li>
-          </ul>
-          <ul v-else>
-            <li>
-              <input type="checkbox" value="Title" />
-            </li>
-          </ul>
+        <div ref="containerSetting" class="containerSetting">
+          <div class="cursor-pointer">
+            <img :src="settings" alt="settings" @click="toggleDropdown" />
+          </div>
+          <div v-if="isDropdownOpen" class="settings-list">
+            <div>
+              <ul v-if="!columnsSetting.value || columnsSetting.step === 0">
+                <li @click.stop="() => setingsChangeSteps('view', 1)">
+                  <span> Отображение столбцов </span>
+                  <img :src="arrowRight" alt="arrowRight" />
+                </li>
+                <li @click.stop="() => setingsChangeSteps('sort', 1)">
+                  <span> Порядок столбцов </span>
+                  <img :src="arrowRight" alt="arrowRight" />
+                </li>
+              </ul>
+              <div
+                v-if="columnsSetting.step === 1 && columnsSetting.value === 'view'"
+                class="checkbox"
+                ref="checkbox"
+              >
+                <div
+                  class="flex flex-row text-[14px] justify-content items-center cursor-pointer gap-[10px] pl-[9.6px] pr-[10px] py-[7px] hover:bg-[#eeeff1] rounded-[5px]"
+                  @click.stop="setingsChangeSteps('', 0)"
+                >
+                  <img :src="arrowRight" alt="back" class="w-[5px] h-[16px] rotate-180" />
+                  <span class="font-['MyriadPo']">Отображение столбцов</span>
+                </div>
+                <div
+                  v-for="(item, index) in tableHeaders"
+                  :key="index"
+                  class="checkboxItem"
+                >
+                  <input
+                    type="checkbox"
+                    :checked="item.checked"
+                    @click.stop
+                    @change="handleChange(index)"
+                  />
+                  <span>{{ item.header }}</span>
+                </div>
+              </div>
+              <template
+                v-if="columnsSetting.step === 1 && columnsSetting.value === 'sort'"
+              >
+                <div>Порядок столбцов</div>
+              </template>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="things__table--dragzone h-full overflow-auto pr-[15px]">
-        <!-- <Table_DND :tableData="tableData"></Table_DND> -->
-        <DragTable :tableData="tableData"></DragTable>
+      <div class="things__table--dragzone overflow-auto pr-[15px]">
+        <DragTable
+          :tableData="availableTableData"
+          :boolAddColumn="boolAddColumn"
+          @deleteRow="deleteRow"
+          @cancelAddingRow="boolAddColumn = false"
+          @addData="addData"
+        ></DragTable>
+      </div>
+      <div class="things__table--summary">
+        <SummaryBoard :summaryData="computedAllData"></SummaryBoard>
       </div>
     </section>
   </div>
 </template>
 <script setup>
-import { onMounted, reactive, ref, watchEffect } from "vue";
+import { computed, onMounted, onUnmounted, reactive, ref, watchEffect } from "vue";
+import back from "@/assets/back.svg";
 import plus from "@/assets/plus.svg";
 import settings from "@/assets/settings.svg";
 import arrowRight from "@/assets/arrow-right.svg";
-import Table_DND from "@/components/Table_DND.vue";
+// import Table_DND from "@/components/Table_DND.vue";
 import DragTable from "@/components/DragTable.vue";
+import SummaryBoard from "@/components/SummaryBoard.vue";
 const isDropdownOpen = ref(false);
-const columnsSetting = ref(null);
-const dropdown = ref(null);
+const columnsSetting = ref({
+  value: "",
+  step: null,
+});
+const checkbox = ref();
 const containerSetting = ref(null);
 const toggleDropdown = () => {
   isDropdownOpen.value = true;
+  columnsSetting.value.step = 0;
 };
+const availableTableData = ref();
+const tableHeaders = ref([]);
 const handleClickOutside = (event) => {
-  if (containerSetting.value && !containerSetting.value.contains(event.target)) {
+  const modal = document.querySelector(".containerSetting");
+  if (modal && !modal.contains(event.target)) {
+    console.log("pl");
     isDropdownOpen.value = false;
+    columnsSetting.value.value = "";
+    columnsSetting.value.step = null;
   }
 };
-const selectedOption = (type) => (columnsSetting.value = type);
-watchEffect(() => {
-  if (isDropdownOpen.value) {
-    document.addEventListener("click", handleClickOutside);
-  } else {
-    document.removeEventListener("click", handleClickOutside);
-  }
-});
-onMounted(() => {
-  /*
-    getTableDate();
-    function getTableData
-    loading = true
-    fetch('url/getTableData').then((response) => {
-        return response.json()
-    }).then((data) => {
-        // tableData = data
-    }).catch((err) => {
-        //errorMessage = err
-    }).finally(() => {
-        loading = false
-    })
 
-    */
-});
-// ------------------- //
-const tableData = reactive([
+const handleChange = (index) => {
+  tableHeaders.value[index]["checked"] = !tableHeaders.value[index]["checked"];
+  let currentFieldName = tableHeaders.value[index]["header"];
+
+  availableTableData.value.forEach((row, index) => {
+    if (currentFieldName in row) {
+      delete row[currentFieldName];
+    } else {
+      row[currentFieldName] = tableData.value[index][currentFieldName];
+    }
+  });
+};
+
+const setingsChangeSteps = (type, step) => {
+  columnsSetting.value.value = type;
+  columnsSetting.value.step = step;
+};
+const boolAddColumn = ref(false);
+const addColumn = () => {
+  boolAddColumn.value = true;
+};
+const addData = (data) => {
+  tableData.value.push(data);
+  boolAddColumn.value = false;
+  /* call post api  fetch('url',{
+    method:"POST",
+    headers:{ },
+    body:data
+  }).then((res) => res.json).then((respData) => return successfully or failed)
+  */
+};
+
+const deleteRow = (index) => {
+  let start = tableData.value.slice(0, index);
+  let end = tableData.value.slice(index + 1);
+  let final = [...start, ...end];
+  tableData.value = final;
+
+  /* call delete api  fetch('url',{
+    method:"DELETE",
+    headers:{ },
+    body:index
+  }).then((res) => res.json).then((respData) => return successfully or failed)
+  */
+};
+
+// watchEffect(() => {
+//   if (isDropdownOpen.value) {
+//     document.addEventListener("click", handleClickOutside);
+//   } else {
+//     document.removeEventListener("click", handleClickOutside);
+//   }
+// });
+const tableData = ref([
   {
     ID: 1231,
     Действие: "удаление",
@@ -204,6 +285,83 @@ const tableData = reactive([
     Примечание: "Доставка 15.04.2024",
   },
 ]);
+function deepClone(obj) {
+  if (obj === null || typeof obj !== "object") {
+    return obj; // Return primitive types or null directly
+  }
+
+  // Create an empty object or array to store the cloned values
+  const cloned = Array.isArray(obj) ? [] : {};
+
+  // Iterate through all keys in the original object or indices in the array
+  for (let key in obj) {
+    // Check if the current key's value is an object or array
+    if (typeof obj[key] === "object" && obj[key] !== null) {
+      // Recursively clone nested objects or arrays
+      cloned[key] = deepClone(obj[key]);
+    } else {
+      // Copy primitive types directly
+      cloned[key] = obj[key];
+    }
+  }
+
+  return cloned;
+}
+
+onMounted(() => {
+  document.addEventListener("click", handleClickOutside);
+  if (tableData.value?.length) {
+    Object.keys(tableData.value[0]).forEach((element, index) => {
+      tableHeaders.value.push({
+        header: element,
+        checked: true,
+      });
+      availableTableData.value = deepClone(tableData.value);
+    });
+  }
+  onUnmounted(() => {
+    document.removeEventListener("click", handleClickOutside);
+  });
+
+  /*
+    getTableDate();
+    function getTableData
+    loading = true
+    fetch('url/getTableData').then((response) => {
+        return response.json()
+    }).then((data) => {
+        // tableData.value = data
+    }).catch((err) => {
+        //errorMessage = err
+    }).finally(() => {
+        loading = false
+    })
+
+    */
+});
+// ------------------- //
+
+const sumPrice = computed(() => {
+  return tableData.value.reduce((total, currentItem) => {
+    return total + parseFloat(currentItem["Цена"]);
+  }, 0);
+});
+
+const sumCount = computed(() => {
+  return tableData.value.reduce((total, currentItem) => {
+    return total + parseFloat(currentItem["Количество"]);
+  }, 0);
+});
+const sumWeight = computed(() => {
+  return tableData.value.reduce((total, currentItem) => {
+    return total + parseFloat(currentItem["Вес, кг"]);
+  }, 0);
+});
+const computedAllData = ref({
+  sumPrice,
+  sumCount,
+  sumWeight,
+});
 </script>
 <style lang="scss" scoped>
 .things {
@@ -211,14 +369,15 @@ const tableData = reactive([
   gap: 25px;
   flex-direction: column;
   width: 100%;
+  background-color: #fff;
   &__table {
     width: 100%;
-    height: 453px;
+    // height: 453px;
     padding: 9px 1px 25px;
     border-radius: 10px;
     box-shadow: 0 5px 20px 0 rgba(0, 0, 0, 0.07);
     border: solid 1px var(--pale-grey);
-    background-color: #fff;
+
     &--save {
       position: relative;
       display: flex;
@@ -239,6 +398,12 @@ const tableData = reactive([
         color: #a6b7d4;
         cursor: pointer;
       }
+    }
+    &--summary {
+      display: flex;
+      flex-direction: row;
+      justify-content: flex-end;
+      padding: 15px;
     }
   }
 }
@@ -272,14 +437,15 @@ const tableData = reactive([
 }
 
 .settings-list {
+  z-index: 999;
   border-radius: 5px;
   background-color: #fff;
   width: 179px;
   position: absolute;
   top: 20px;
   right: 15px;
+  box-shadow: 0 0 3px 0 #000, inset 0 1px 2px 0 rgba(255, 255, 255, 0.5);
   ul {
-    box-shadow: 0 0 3px 0 #000, inset 0 1px 2px 0 rgba(255, 255, 255, 0.5);
     width: 100%;
     // padding: 0 10.7px 0 9.6px;
     border-radius: 5px;
@@ -305,5 +471,17 @@ const tableData = reactive([
       }
     }
   }
+}
+.checkbox {
+  height: 400px;
+  overflow: scroll;
+}
+.checkboxItem {
+  padding: 7px 10.7px 7px 9.6px;
+  font-size: 14px;
+  font-family: MyriadPro;
+  display: flex;
+  flex-direction: row;
+  gap: 5px;
 }
 </style>
