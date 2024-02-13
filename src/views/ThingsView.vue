@@ -1,16 +1,13 @@
 <template>
   <div class="things">
-    <div class="add">
-      <button
-        class="flex flex-row justify-center text-center align-middle gap-[7px]"
-        @click="addColumn"
-      >
+    <div class="things__addRow">
+      <button @click="addColumn">
         <img :src="plus" alt="plus" class="my-[2px]" />
         <span>Добавить строку</span>
       </button>
     </div>
-    <section class="things__table flex flex-col gap-[25px]">
-      <div class="things__table--save">
+    <section class="things__section">
+      <div class="things__section--actions">
         <button>Сохранить изменения</button>
         <div ref="containerSetting" class="containerSetting">
           <div class="cursor-pointer">
@@ -63,7 +60,7 @@
           </div>
         </div>
       </div>
-      <div class="things__table--dragzone overflow-auto pr-[15px]">
+      <div class="things__section--main overflow-auto pr-[15px]">
         <DragTable
           :tableData="availableTableData"
           :boolAddColumn="boolAddColumn"
@@ -72,19 +69,17 @@
           @addData="addData"
         ></DragTable>
       </div>
-      <div class="things__table--summary">
+      <div class="things__section--summary">
         <SummaryBoard :summaryData="computedAllData"></SummaryBoard>
       </div>
     </section>
   </div>
 </template>
 <script setup>
-import { computed, onMounted, onUnmounted, reactive, ref, watchEffect } from "vue";
-import back from "@/assets/back.svg";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import plus from "@/assets/plus.svg";
 import settings from "@/assets/settings.svg";
 import arrowRight from "@/assets/arrow-right.svg";
-// import Table_DND from "@/components/Table_DND.vue";
 import DragTable from "@/components/DragTable.vue";
 import SummaryBoard from "@/components/SummaryBoard.vue";
 const isDropdownOpen = ref(false);
@@ -98,12 +93,11 @@ const toggleDropdown = () => {
   isDropdownOpen.value = true;
   columnsSetting.value.step = 0;
 };
-const availableTableData = ref();
+const availableTableData = ref([]);
 const tableHeaders = ref([]);
 const handleClickOutside = (event) => {
   const modal = document.querySelector(".containerSetting");
   if (modal && !modal.contains(event.target)) {
-    console.log("pl");
     isDropdownOpen.value = false;
     columnsSetting.value.value = "";
     columnsSetting.value.step = null;
@@ -111,6 +105,7 @@ const handleClickOutside = (event) => {
 };
 
 const handleChange = (index) => {
+  /* call changeAvailableColumns()  */
   tableHeaders.value[index]["checked"] = !tableHeaders.value[index]["checked"];
   let currentFieldName = tableHeaders.value[index]["header"];
 
@@ -134,12 +129,9 @@ const addColumn = () => {
 const addData = (data) => {
   tableData.value.push(data);
   boolAddColumn.value = false;
-  /* call post api  fetch('url',{
-    method:"POST",
-    headers:{ },
-    body:data
-  }).then((res) => res.json).then((respData) => return successfully or failed)
-  */
+  availableTableData.value.push(data);
+  /* call addRow(data) function
+   */
 };
 
 const deleteRow = (index) => {
@@ -147,37 +139,56 @@ const deleteRow = (index) => {
   let end = tableData.value.slice(index + 1);
   let final = [...start, ...end];
   tableData.value = final;
-
-  /* call delete api  fetch('url',{
-    method:"DELETE",
-    headers:{ },
-    body:index
-  }).then((res) => res.json).then((respData) => return successfully or failed)
-  */
+  availableTableData.value = [
+    ...availableTableData.value.slice(0, index),
+    ...availableTableData.value.slice(index + 1),
+  ];
+  /* call deleteRow(index) function
+   */
 };
 
-// watchEffect(() => {
-//   if (isDropdownOpen.value) {
-//     document.addEventListener("click", handleClickOutside);
-//   } else {
-//     document.removeEventListener("click", handleClickOutside);
-//   }
-// });
+// const tableData = ref([
+//   {
+//     Действие: "удаление",
+//     "Наименование единицы": "Мраморный щебень фр. 2-5 мм, 25кг",
+//     Цена: 1231,
+//     Количество: 7,
+//     "Вес, кг": 25,
+//     Итого: 8617,
+//   },
+//   {
+//     Действие: "удаление",
+//     "Наименование единицы": "Мраморный щебень фр. 2-5 мм, 1т",
+//     Цена: 7000,
+//     Количество: 8,
+//     "Вес, кг": 1000,
+//     Итого: 56000,
+//   },
+//   {
+//     Действие: "удаление",
+//     "Наименование единицы": "Мраморный щебень фр. 2-5 мм, 25кг (белый)",
+//     Цена: 1500,
+//     Количество: 6,
+//     "Вес, кг": 25,
+//     Итого: 9000,
+//   },
+// ]);
+
 const tableData = ref([
   {
     ID: 1231,
     Действие: "удаление",
-    "Наименование едeницы": "Мраморный щебень фр. 2-5 мм, 25кг",
-    Цена: "1231",
+    "Наименование единицы": "Мраморный щебень фр. 2-5 мм, 25кг",
+    Цена: 1231,
     Количество: 7,
     "Название товар.": "",
     "Дата создания": "",
     "Дата изменения": "",
     "Название [сист.]": "127048",
     "Статус точки [прог.]": "Успешно",
-    "Вес, кг": "72",
+    "Вес, кг": 72,
     Состав: "Мрамор природный галтованный фр. 20-40 мм, 25кг: 3 шт.",
-    "Тип ТК": "2301",
+    "Тип ТК": 2301,
     "Дата доставки [прог.]": "",
     "Ответственный [прог.]": "Илья",
     "Тест поле": "",
@@ -191,17 +202,17 @@ const tableData = ref([
   {
     ID: 1234,
     Действие: "удаление",
-    "Наименование едeницы": "Мраморный щебень фр. 2-5 мм, 25кг",
-    Цена: "1231",
+    "Наименование единицы": "Мраморный щебень фр. 2-5 мм, 25кг",
+    Цена: 1231,
     Количество: 7,
     "Название товар.": "",
     "Дата создания": "",
     "Дата изменения": "",
     "Название [сист.]": "127048",
     "Статус точки [прог.]": "Успешно",
-    "Вес, кг": "72",
+    "Вес, кг": 72,
     Состав: "Мрамор природный галтованный фр. 20-40 мм, 25кг: 3 шт.",
-    "Тип ТК": "2301",
+    "Тип ТК": 2301,
     "Дата доставки [прог.]": "",
     "Ответственный [прог.]": "Илья",
     "Тест поле": "",
@@ -215,17 +226,17 @@ const tableData = ref([
   {
     ID: 1244,
     Действие: "удаление",
-    "Наименование едeницы": "Мраморный щебень фр. 2-5 мм, 25кг",
-    Цена: "1231",
+    "Наименование единицы": "Мраморный щебень фр. 2-5 мм, 25кг",
+    Цена: 1231,
     Количество: 7,
     "Название товар.": "",
     "Дата создания": "",
     "Дата изменения": "",
     "Название [сист.]": "127048",
     "Статус точки [прог.]": "Успешно",
-    "Вес, кг": "72",
+    "Вес, кг": 72,
     Состав: "Мрамор природный галтованный фр. 20-40 мм, 25кг: 3 шт.",
-    "Тип ТК": "2301",
+    "Тип ТК": 2301,
     "Дата доставки [прог.]": "",
     "Ответственный [прог.]": "Илья",
     "Тест поле": "",
@@ -239,15 +250,15 @@ const tableData = ref([
   {
     ID: 1255,
     Действие: "удаление",
-    "Наименование едeницы": "Мраморный щебень фр. 2-5 мм, 25кг",
-    Цена: "1231",
+    "Наименование единицы": "Мраморный щебень фр. 2-5 мм, 25кг",
+    Цена: 1231,
     Количество: 7,
     "Название товар.": "",
     "Дата создания": "",
     "Дата изменения": "",
     "Название [сист.]": "127048",
     "Статус точки [прог.]": "Успешно",
-    "Вес, кг": "72",
+    "Вес, кг": 72,
     Состав: "Мрамор природный галтованный фр. 20-40 мм, 25кг: 3 шт.",
     "Тип ТК": "2301",
     "Дата доставки [прог.]": "",
@@ -263,17 +274,17 @@ const tableData = ref([
   {
     ID: 1266,
     Действие: "удаление",
-    "Наименование едeницы": "Мраморный щебень фр. 2-5 мм, 25кг",
-    Цена: "1231",
+    "Наименование единицы": "Мраморный щебень фр. 2-5 мм, 25кг",
+    Цена: 1231,
     Количество: 7,
     "Название товар.": "",
     "Дата создания": "",
     "Дата изменения": "",
     "Название [сист.]": "127048",
     "Статус точки [прог.]": "Успешно",
-    "Вес, кг": "72",
+    "Вес, кг": 72,
     Состав: "Мрамор природный галтованный фр. 20-40 мм, 25кг: 3 шт.",
-    "Тип ТК": "2301",
+    "Тип ТК": 2301,
     "Дата доставки [прог.]": "",
     "Ответственный [прог.]": "Илья",
     "Тест поле": "",
@@ -285,30 +296,27 @@ const tableData = ref([
     Примечание: "Доставка 15.04.2024",
   },
 ]);
-function deepClone(obj) {
+
+const deepClone = (obj) => {
   if (obj === null || typeof obj !== "object") {
-    return obj; // Return primitive types or null directly
+    return obj;
   }
 
-  // Create an empty object or array to store the cloned values
   const cloned = Array.isArray(obj) ? [] : {};
 
-  // Iterate through all keys in the original object or indices in the array
   for (let key in obj) {
-    // Check if the current key's value is an object or array
     if (typeof obj[key] === "object" && obj[key] !== null) {
-      // Recursively clone nested objects or arrays
       cloned[key] = deepClone(obj[key]);
     } else {
-      // Copy primitive types directly
       cloned[key] = obj[key];
     }
   }
 
   return cloned;
-}
+};
 
 onMounted(() => {
+  // call getTableData() function
   document.addEventListener("click", handleClickOutside);
   if (tableData.value?.length) {
     Object.keys(tableData.value[0]).forEach((element, index) => {
@@ -323,27 +331,69 @@ onMounted(() => {
     document.removeEventListener("click", handleClickOutside);
   });
 
+  //   async function getTableData() {
+  //   loading = true;
+  //   try {
+  //     const response = await fetch('url/getTableData');
+  //     if (!response.ok) {
+  //       throw new Error('Network response was not ok');
+  //     }
+  //     const tableData.value = await response.json();
+  //   } catch (error) {
+  //      errorMessage = error;
+  //   } finally {
+  //     loading = false;
+  //   }
+  // }
   /*
-    getTableDate();
-    function getTableData
-    loading = true
-    fetch('url/getTableData').then((response) => {
-        return response.json()
-    }).then((data) => {
-        // tableData.value = data
-    }).catch((err) => {
-        //errorMessage = err
-    }).finally(() => {
-        loading = false
-    })
+    function addRow (data) {
+      fetch('url', {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json', 
+        },
+        body: JSON.stringify(data) 
+      })
+        .then((res) => {
+          if (!res.ok) {
+            throw new Error('Network response was not ok');
+          }
+          return res.json();
+        })
+        .then((respData) => {
+          console.log('Success:', respData);
+        })
+        .catch((error) => {
+          console.error('Error:', error);
+        });
+    }
+    function deleteRow(index){
+      fetch('url',{
+          method:"DELETE",
+          headers:{ 'Content-Type': 'application/json'},
+          body:index
+        }) .then((res) => {
+          if (!res.ok) {
+            throw new Error('Network response was not ok');
+          }
+          return res.json();
+        })
+        .then((respData) => {
+          console.log('Success:', respData);
+        })
+        .catch((error) => {
+          console.error('Error:', error);
+        });
 
-    */
+    }
+    
+  */
 });
 // ------------------- //
 
 const sumPrice = computed(() => {
   return tableData.value.reduce((total, currentItem) => {
-    return total + parseFloat(currentItem["Цена"]);
+    return total + parseFloat(currentItem["Цена"]) * currentItem["Количество"];
   }, 0);
 });
 
@@ -354,7 +404,7 @@ const sumCount = computed(() => {
 });
 const sumWeight = computed(() => {
   return tableData.value.reduce((total, currentItem) => {
-    return total + parseFloat(currentItem["Вес, кг"]);
+    return total + currentItem["Вес, кг"] * currentItem["Количество"];
   }, 0);
 });
 const computedAllData = ref({
@@ -370,15 +420,53 @@ const computedAllData = ref({
   flex-direction: column;
   width: 100%;
   background-color: #fff;
-  &__table {
+  &__addRow {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+    padding: 20px 25px;
+    height: 75px;
+    border-radius: 10px;
+    box-shadow: 0 5px 20px 0 rgba(0, 0, 0, 0.07);
+    border: solid 1px var(--pale-grey);
+    background-color: #fff;
+    button {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      align-items: center;
+      gap: 7px;
+      width: 146px;
+      height: 35px;
+      padding: 10px 15px 10px 10px;
+      border-radius: 5px;
+      background-color: #2f8cff;
+    }
+
+    button span {
+      width: 103px;
+      height: 15px;
+      font-family: MyriadPro;
+      font-size: 14px;
+      font-weight: normal;
+      font-stretch: normal;
+      font-style: normal;
+      line-height: normal;
+      letter-spacing: normal;
+      color: #fff;
+    }
+  }
+
+  &__section {
     width: 100%;
-    // height: 453px;
     padding: 9px 1px 25px;
     border-radius: 10px;
     box-shadow: 0 5px 20px 0 rgba(0, 0, 0, 0.07);
     border: solid 1px var(--pale-grey);
-
-    &--save {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    &--actions {
       position: relative;
       display: flex;
       flex-direction: row;
@@ -407,34 +495,6 @@ const computedAllData = ref({
     }
   }
 }
-.add {
-  padding: 20px 25px;
-  height: 75px;
-  border-radius: 10px;
-  box-shadow: 0 5px 20px 0 rgba(0, 0, 0, 0.07);
-  border: solid 1px var(--pale-grey);
-  background-color: #fff;
-  button {
-    width: 146px;
-    height: 35px;
-    padding: 10px 15px 10px 10px;
-    border-radius: 5px;
-    background-color: #2f8cff;
-  }
-
-  button span {
-    width: 103px;
-    height: 15px;
-    font-family: MyriadPro;
-    font-size: 14px;
-    font-weight: normal;
-    font-stretch: normal;
-    font-style: normal;
-    line-height: normal;
-    letter-spacing: normal;
-    color: #fff;
-  }
-}
 
 .settings-list {
   z-index: 999;
@@ -447,9 +507,7 @@ const computedAllData = ref({
   box-shadow: 0 0 3px 0 #000, inset 0 1px 2px 0 rgba(255, 255, 255, 0.5);
   ul {
     width: 100%;
-    // padding: 0 10.7px 0 9.6px;
     border-radius: 5px;
-    // background-color: #eef3f8;
     li {
       cursor: pointer;
       display: flex;
@@ -473,7 +531,8 @@ const computedAllData = ref({
   }
 }
 .checkbox {
-  height: 400px;
+  height: fit-content;
+  max-height: 400px;
   overflow: scroll;
 }
 .checkboxItem {
@@ -483,5 +542,19 @@ const computedAllData = ref({
   display: flex;
   flex-direction: row;
   gap: 5px;
+}
+
+@media screen and (max-width: 767px) {
+  .things {
+    &__section {
+      padding: 1px 1px 25px;
+    }
+    &__section--actions {
+      display: none;
+    }
+    &__section--main {
+      padding-right: 0px;
+    }
+  }
 }
 </style>

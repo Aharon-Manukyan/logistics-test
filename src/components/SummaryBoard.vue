@@ -57,4 +57,9 @@ const props = defineProps({
     justify-content: space-between;
   }
 }
+@media screen and (max-width: 767px) {
+  .summaryBoard {
+    margin: 0 auto;
+  }
+}
 </style>
