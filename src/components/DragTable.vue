@@ -27,7 +27,9 @@
             <div :class="{ 'drag-handleColumn': colIndex }">{{ col }}</div>
             <div
               class="resize-handle"
+              @mouseover="prepaireResizing($event, colIndex)"
               @mousedown="startResize($event, colIndex)"
+              @mouseleave="leavingResizing(colIndex)"
               @mouseup="endResize"
             ></div>
           </th>
@@ -37,15 +39,19 @@
         <td
           v-for="(header, i) in headers"
           :key="i"
-          class="w-full h-[45px] px-[15px] py-[5px] bg-[#eeeff1]"
+          class="w-full h-[45px] bg-[#eeeff1] px-[15px] py-[5px]"
         >
-          <input
-            v-if="header !== ' '"
-            type="text"
-            :placeholder="header"
-            :name="header"
-            class="overflow-hidden w-full"
-          />
+          <template v-if="header === 'Действие'"> </template>
+          <template v-else-if="header !== ' '">
+            <input
+              :type="typeof tableData[0][header] === 'number' ? 'number' : 'text'"
+              :placeholder="header"
+              :name="header"
+              class="overflow-hidden w-full"
+              min="0"
+            />
+          </template>
+
           <div v-else class="flex flex-row justify-center gap-2">
             <button class="w-[20px]" @click="addRow">
               <img :src="checked" alt="Checked" />
@@ -193,6 +199,7 @@ const addRow = () => {
   const objData = {};
   inputs.forEach((inp) => {
     objData[inp.placeholder] = inp.value;
+    objData["Действие"] = "удаление";
   });
   emits("addData", objData);
 };
@@ -299,25 +306,31 @@ let resizingColumnIndex = ref(-1);
 const isChooseResizingCell = (idx) => {
   return resizingColumnIndex.value === idx;
 };
+const prepaireResizing = (event, index) => {
+  resizingColumnIndex.value = index;
+};
 const startResize = (event, index) => {
   resizing.value = true;
   startMouseX.value = event.pageX;
   startWidth.value = parseFloat(columnWidths.value[index]);
-  resizingColumnIndex.value = index;
 };
-
+const leavingResizing = (index) => {
+  if (!resizing.value) {
+    resizingColumnIndex.value = -1;
+  }
+};
 const endResize = () => {
   resizing.value = false;
   resizingColumnIndex.value = -1;
 };
 const handleMouseOver = (event) => {
-  if (resizingColumnIndex.value !== -1) {
+  if (resizingColumnIndex.value !== -1 && resizing.value) {
     const widthDiff = event.pageX - startMouseX.value;
     columnWidths.value[resizingColumnIndex.value] = `${startWidth.value + widthDiff}px`;
   }
 };
 const handleMouseUp = () => {
-  if (resizingColumnIndex.value > 0) {
+  if (resizingColumnIndex.value > 0 && resizing.value) {
     resizingColumnIndex.value = -1;
     resizing.value = false;
   }
@@ -560,7 +573,7 @@ onUnmounted(() => {
       label {
         display: none !important;
       }
-      padding: 5px 10px;
+      padding: 5px 15px !important;
       &--content {
         display: flex;
         flex-direction: row;
