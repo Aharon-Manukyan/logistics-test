@@ -1,7 +1,7 @@
 <template>
   <div class="things">
     <div class="things__addRow">
-      <button @click="addColumn">
+      <button @click.stop="addColumnInTable">
         <img :src="plus" alt="plus" class="my-[2px]" />
         <span>Добавить строку</span>
       </button>
@@ -63,9 +63,8 @@
       <div class="things__section--main overflow-auto pr-[15px]">
         <DragTable
           :tableData="availableTableData"
-          :boolAddColumn="boolAddColumn"
+          :addCol="addCol"
           @deleteRow="deleteRow"
-          @cancelAddingRow="boolAddColumn = false"
           @addData="addData"
         ></DragTable>
       </div>
@@ -122,13 +121,10 @@ const setingsChangeSteps = (type, step) => {
   columnsSetting.value.value = type;
   columnsSetting.value.step = step;
 };
-const boolAddColumn = ref(false);
-const addColumn = () => {
-  boolAddColumn.value = true;
-};
+
 const addData = (data) => {
   tableData.value.push(data);
-  boolAddColumn.value = false;
+  addCol.value = false;
   availableTableData.value.push(data);
   /* call addRow(data) function
    */
@@ -314,7 +310,11 @@ const deepClone = (obj) => {
 
   return cloned;
 };
-
+/* final */
+const addCol = ref(false);
+const addColumnInTable = () => {
+  addCol.value = true;
+};
 onMounted(() => {
   // call getTableData() function
   document.addEventListener("click", handleClickOutside);

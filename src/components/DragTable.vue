@@ -35,33 +35,6 @@
           </th>
         </template>
       </draggable>
-      <tr class="relative addRow" v-show="boolAddColumn">
-        <td
-          v-for="(header, i) in headers"
-          :key="i"
-          class="w-full h-[45px] bg-[#eeeff1] px-[15px] py-[5px]"
-        >
-          <template v-if="header === 'Действие'"> </template>
-          <template v-else-if="header !== ' '">
-            <input
-              :type="typeof tableData[0][header] === 'number' ? 'number' : 'text'"
-              :placeholder="header"
-              :name="header"
-              class="overflow-hidden w-full"
-              min="0"
-            />
-          </template>
-
-          <div v-else class="flex flex-row justify-center gap-2">
-            <button class="w-[20px]" @click="addRow">
-              <img :src="checked" alt="Checked" />
-            </button>
-            <button @click="emits('cancelAddingRow')" class="w-[20px]">
-              <img :src="cancel" alt="Cancel" />
-            </button>
-          </div>
-        </td>
-      </tr>
     </thead>
     <draggable
       v-model="data"
@@ -76,6 +49,7 @@
     >
       <template #item="{ element: rows, index: rowIndex }">
         <tr
+          v-if="!rows.editable"
           class="table__tbody--row"
           :key="rowIndex"
           :class="{
@@ -84,8 +58,9 @@
           }"
         >
           <template v-for="(value, idx) in rows" :key="idx">
+            <template v-if="value === false"> </template>
             <td
-              v-if="idx === 0"
+              v-else-if="idx === 0"
               class="table__tbody--row__cell"
               :class="{
                 'drag-border': isChooseResizingCell(idx),
@@ -136,7 +111,7 @@
                     <div>
                       {{ value }}
                     </div>
-                    <div class="rightSide">
+                    <div class="rightSide h-[33px]">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         viewBox="0 0 10 10"
@@ -159,6 +134,95 @@
             </td>
           </template>
         </tr>
+        <tr v-else class="relative addRow">
+          <td
+            v-for="(header, i) in headers"
+            :key="i"
+            class="w-full h-[45px] bg-[#eeeff1] px-[15px] py-[5px]"
+          >
+            <template v-if="header === 'Действие'">
+              <div class="table__tbody--row__cell--content deleteCell">
+                <img
+                  class="cursor-pointer"
+                  :src="other"
+                  alt="other"
+                  @click.stop="showPopupFunction(rowIndex)"
+                />
+              </div>
+            </template>
+            <template v-else-if="header !== ' '">
+              <div class="relative">
+                <template v-if="typeof tableData[0][header] === 'number'">
+                  <input
+                    type="number"
+                    :placeholder="header"
+                    :name="header"
+                    class="overflow-hidden w-full h-[35px] px-[15px] pt-[10px] pb-[9px] z-10 border border-[#ccc]"
+                    min="0"
+                    v-model="searchQuery[header]"
+                  />
+                </template>
+                <template v-else-if="typeof tableData[0][header] === 'string'">
+                  <input
+                    type="text"
+                    :placeholder="header"
+                    :name="header"
+                    class="overflow-hidden w-full h-[35px] px-[15px] pt-[10px] pb-[9px] z-10 border border-[#ccc]"
+                    @input="filteredInput(header, i)"
+                    v-model="searchQuery[header]"
+                  />
+                  <div class="rightSide h-[32px]">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 10 10"
+                      width="10"
+                      height="10"
+                      fill="#C0C0C0"
+                    >
+                      <polygon points="0,10 5,0 10,10" />
+                    </svg>
+                  </div>
+                  <ul
+                    v-if="
+                      filteredItems?.length &&
+                      filteredInputTitle === header &&
+                      filteredStart
+                    "
+                    class="fixed z-20 searchList"
+                  >
+                    <li
+                      v-for="item in filteredItems"
+                      :key="item.id"
+                      class="cursor-pointer"
+                      @click.stop="
+                        () => {
+                          filteredStart = false;
+                          searchQuery[header] = item;
+                        }
+                      "
+                    >
+                      {{ item }}
+                    </li>
+                  </ul>
+                </template>
+              </div>
+            </template>
+            <div v-else>
+              <div class="table__tbody--row__cell--content firstCell">
+                <img :src="select" alt="select" class="drag-handle" />
+                <span>{{ rowIndex + 1 }}</span>
+              </div>
+            </div>
+            <!-- <div v-else class="flex flex-row justify-center gap-2">
+              <button class="w-[20px]" @click="addRow">
+                <img :src="checked" alt="Checked" />
+              </button>
+              <button @click="emits('cancelAddingRow')" class="w-[20px]">
+                <img :src="cancel" alt="Cancel" />
+              </button>
+            </div> -->
+          </td>
+        </tr>
       </template>
     </draggable>
   </table>
@@ -169,20 +233,18 @@ import { onMounted, ref, computed, watch, onUnmounted } from "vue";
 import draggable from "vuedraggable";
 import select from "@/assets/select.svg";
 import other from "@/assets/other.svg";
-import checked from "@/assets/checked.svg";
-import cancel from "@/assets/cancel.svg";
 
 const props = defineProps({
   tableData: {
     type: Array,
     required: true,
   },
-  boolAddColumn: {
+  addCol: {
     type: Boolean,
     default: false,
   },
 });
-const emits = defineEmits(["deleteRow", "cancelAddingRow", "addData"]);
+const emits = defineEmits(["deleteRow", "addData"]);
 const headers = ref();
 const data = ref();
 const columnWidths = ref();
@@ -193,16 +255,7 @@ const showPopupFunction = (index) => {
   showPopup.value = true;
   showPopupIndex.value = index;
 };
-const boolAddColumn = computed(() => props.boolAddColumn);
-const addRow = () => {
-  let inputs = document.querySelectorAll("tr.addRow input");
-  const objData = {};
-  inputs.forEach((inp) => {
-    objData[inp.placeholder] = inp.value;
-    objData["Действие"] = "удаление";
-  });
-  emits("addData", objData);
-};
+
 const deleteRow = (index) => {
   showPopup.value = false;
   emits("deleteRow", index);
@@ -212,13 +265,7 @@ const columnDragStart = ref(false);
 const columnDragIndex = ref(-1);
 const selectedCells = ref([]);
 const nonDraggableColumnIndex = ref(0);
-const moveColumn = () => {
-  if (resizing.value) {
-    return false;
-  } else {
-    return true;
-  }
-};
+
 const onDragStartColumn = (event) => {
   columnDragStart.value = true;
   columnDragIndex.value = event.oldIndex;
@@ -288,11 +335,23 @@ function moveElement(array, fromIndex, toIndex) {
   array.splice(toIndex, 0, element);
   return array;
 }
-const handleClickOutsideSmallPopup = (event) => {
+const handleClickOutside = (event) => {
   const popupHtml = document.querySelector(".smallPopup");
   if (popupHtml && !popupHtml.contains(event.target)) {
     showPopup.value = false;
     showPopupIndex.value = -1;
+  }
+  const ul = document.querySelector("ul.searchList");
+  if (ul && !ul.contains(event.target)) {
+    filteredInputTitle.value = "";
+    filteredStart.value = false;
+    filteredItems.value = [];
+  }
+  const addRowTR = document.querySelector("tr.addRow");
+  if (addCol.value && !addRowTR.contains(event.target)) {
+    " " in searchQuery.value ? delete searchQuery.value[" "] : null;
+    searchQuery.value["Действие"] = "удаление";
+    emits("addData", searchQuery.value);
   }
 };
 
@@ -403,7 +462,8 @@ watch(
     headers.value = newValue.length ? Object.keys(newValue[0]) : [];
     headers.value.unshift(" ");
     data.value = newValue.map((row, index) => {
-      return [index + 1, ...Object.values(row)];
+      let newRow = { ...row, editable: false };
+      return [index + 1, ...Object.values(newRow)];
     });
 
     calculateColumnWidths();
@@ -412,8 +472,42 @@ watch(
     deep: true,
   }
 );
+
+/* final */
+const addCol = computed(() => props.addCol);
+const searchQuery = ref([]);
+const filteredInputTitle = ref("");
+const filteredStart = ref(false);
+const filteredItems = ref([]);
+const filteredInput = (header, colIndex) => {
+  filteredStart.value = true;
+  filteredInputTitle.value = header;
+
+  let arr = [];
+  data.value.forEach((row) => {
+    if (row[colIndex]) {
+      arr.push(row[colIndex]);
+    }
+  });
+  filteredItems.value = arr.filter((cell) => {
+    return cell.toLowerCase().includes(searchQuery.value[header].toLowerCase());
+  });
+};
+
+watch(
+  () => addCol.value,
+  () => {
+    if (addCol.value) {
+      data.value.push({ ...headers, editable: true });
+      headers.value.forEach((header) => {
+        searchQuery.value[header] = "";
+      });
+    }
+  }
+);
+
 onMounted(() => {
-  document.addEventListener("click", handleClickOutsideSmallPopup);
+  document.addEventListener("click", handleClickOutside);
   document.addEventListener("mouseover", handleMouseOver);
   document.addEventListener("mouseup", handleMouseUp);
 
@@ -422,13 +516,14 @@ onMounted(() => {
     headers.value.unshift(" ");
 
     data.value = props.tableData.map((row, index) => {
-      return [index + 1, ...Object.values(row)];
+      let newRow = { ...row, editable: false };
+      return [index + 1, ...Object.values(newRow)];
     });
     calculateColumnWidths();
   }
 });
 onUnmounted(() => {
-  document.removeEventListener("click", handleClickOutsideSmallPopup);
+  document.removeEventListener("click", handleClickOutside);
   document.removeEventListener("mouseover", handleMouseOver);
   document.removeEventListener("mouseup", handleMouseUp);
 });
@@ -587,14 +682,14 @@ onUnmounted(() => {
       }
     }
     .firstCell {
-      padding: 15px 10px 14px 10px;
-      d img {
+      //   padding: 15px 10px 14px 10px;
+      img {
         width: 11px;
         height: 12px;
       }
     }
     .deleteCell {
-      padding: 16px 10px;
+      //   padding: 16px 10px;
       img {
         width: 3px;
         height: 13px;
@@ -611,23 +706,46 @@ onUnmounted(() => {
       padding: 10px 10px 9px 15px;
       line-height: 16px;
       position: relative;
-      .rightSide {
-        position: absolute;
-        right: 0;
-        top: 0;
-        width: 21px;
-        background: #f6f5f3;
-        height: 33px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
+    }
+  }
+  .rightSide {
+    position: absolute;
+    right: 1px;
+    top: 1px;
+    width: 21px;
+    background: #f6f5f3;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 
-        svg {
-          transform: rotate(90deg);
-          width: 5px;
-          height: 3px;
-        }
-      }
+    svg {
+      transform: rotate(90deg);
+      width: 5px;
+      height: 3px;
+    }
+  }
+  td ul {
+    max-height: 145px;
+    overflow: scroll;
+    margin: 5px 21px 20px 12.5px;
+    padding: 7px 10px 7px 10px;
+    border-radius: 5px;
+    box-shadow: 0 0 3px 0 #000, inset 0 1px 2px 0 rgba(255, 255, 255, 0.5);
+    background-color: #fff;
+    li {
+      padding: 9px 1px 25px;
+      border-radius: 10px;
+      box-shadow: 0 5px 20px 0 rgba(0, 0, 0, 0.07);
+      border: solid 1px var(--pale-grey);
+      background-color: #fff;
+      font-size: 14px;
+      font-weight: normal;
+      font-stretch: normal;
+      font-style: normal;
+      line-height: normal;
+      letter-spacing: normal;
+      color: #161616;
+      font-family: MyriadPro;
     }
   }
 }
