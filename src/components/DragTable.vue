@@ -1,5 +1,5 @@
 <template>
-  <table class="table" v-if="data?.length">
+  <table class="table" v-if="data?.length && headers?.length > 1">
     <colgroup class="table__colgroup">
       <col
         v-for="(column, index) in headers"
